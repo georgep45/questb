@@ -173,45 +173,6 @@ Handlers.add(
     ao.send({Target = ao.id, Action = "Tick"})
   end
 )
-Handlers.add(
-  "ReturnAttack",
-  Handlers.utils.hasMatchingTag("Action", "Hit"),
-  function (msg)
-    if not InAction then
-      InAction = true
-      local playerState = LatestGameState.Players[ao.id]
-      local playerEnergy = playerState.energy
-      local playerHealth = playerState.health
-      local attackerId = msg.From
-      local damageTaken = tonumber(msg.Tags.Damage)
-
-      -- Check if the player's energy is undefined or zero
-      if playerEnergy == undefined then
-        print(colors.red .. "Unable to read energy." .. colors.reset)
-        ao.send({Target = Game, Action = "Attack-Failed", Reason = "Unable to read energy."})
-      elseif playerEnergy == 0 then
-        print(colors.red .. "Player has insufficient energy." .. colors.reset)
-        ao.send({Target = Game, Action = "Attack-Failed", Reason = "Player has no energy."})
-      else
-        -- Decide whether to return attack or take a defensive action
-        if shouldReturnAttack(playerHealth, damageTaken) then
-          local attackEnergy = calculateRetaliationEnergy(playerEnergy, damageTaken)
-          print(colors.green .. "Returning attack with energy: " .. attackEnergy .. colors.reset)
-          ao.send({Target = Game, Action = "PlayerAttack", Player = ao.id, AttackEnergy = tostring(attackEnergy)})
-        else
-          print(colors.yellow .. "Taking defensive action." .. colors.reset)
-          local safestDirection = findSafestDirection(playerState)
-          ao.send({Target = Game, Action = "PlayerMove", Player = ao.id, Direction = safestDirection})
-        end
-      end
-      InAction = false
-      ao.send({Target = ao.id, Action = "Tick"})
-    else
-      print("Previous action still in progress. Skipping.")
-    end
-  end
-)
-
 -- Determines whether to return attack based on player's health and damage taken
 function shouldReturnAttack(playerHealth, damageTaken)
   -- A simple heuristic could be to return attack if health is above a certain threshold
@@ -270,3 +231,43 @@ end
 function calculateDistance(x1, y1, x2, y2)
   return math.sqrt((x2 - x1)^2 + (y2 - y1)^2)
 end
+
+Handlers.add(
+  "ReturnAttack",
+  Handlers.utils.hasMatchingTag("Action", "Hit"),
+  function (msg)
+    if not InAction then
+      InAction = true
+      local playerState = LatestGameState.Players[ao.id]
+      local playerEnergy = playerState.energy
+      local playerHealth = playerState.health
+      local attackerId = msg.From
+      local damageTaken = tonumber(msg.Tags.Damage)
+
+      -- Check if the player's energy is undefined or zero
+      if playerEnergy == undefined then
+        print(colors.red .. "Unable to read energy." .. colors.reset)
+        ao.send({Target = Game, Action = "Attack-Failed", Reason = "Unable to read energy."})
+      elseif playerEnergy == 0 then
+        print(colors.red .. "Player has insufficient energy." .. colors.reset)
+        ao.send({Target = Game, Action = "Attack-Failed", Reason = "Player has no energy."})
+      else
+        -- Decide whether to return attack or take a defensive action
+        if shouldReturnAttack(playerHealth, damageTaken) then
+          local attackEnergy = calculateRetaliationEnergy(playerEnergy, damageTaken)
+          print(colors.green .. "Returning attack with energy: " .. attackEnergy .. colors.reset)
+          ao.send({Target = Game, Action = "PlayerAttack", Player = ao.id, AttackEnergy = tostring(attackEnergy)})
+        else
+          print(colors.yellow .. "Taking defensive action." .. colors.reset)
+          local safestDirection = findSafestDirection(playerState)
+          ao.send({Target = Game, Action = "PlayerMove", Player = ao.id, Direction = safestDirection})
+        end
+      end
+      InAction = false
+      ao.send({Target = ao.id, Action = "Tick"})
+    else
+      print("Previous action still in progress. Skipping.")
+    end
+  end
+)
+
